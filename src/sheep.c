@@ -157,6 +157,7 @@ static void window_load(Window *window) {
   layer_set_update_proc(canvas_layer, canvas_update_proc);
 
   text_layer = text_layer_create(GRect(0,0, 144, 15));
+  text_layer_set_background_color(text_layer, GColor8(FF00FF00));
   layer_add_child(window_layer, text_layer_get_layer(text_layer));
 }
 
