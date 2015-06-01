@@ -9,6 +9,11 @@
     "resources": {
         "media": [
             {
+                "file": "images/c-bg.png",
+                "name": "IMAGE_BG",
+                "type": "png"
+            },
+            {
                 "file": "images/c-sheep01.png",
                 "name": "IMAGE_SHEEP01",
                 "type": "png"
@@ -17,16 +22,14 @@
                 "file": "images/c-sheep00.png",
                 "name": "IMAGE_SHEEP00",
                 "type": "png"
-            },
-            {
-                "file": "images/c-bg.png",
-                "name": "IMAGE_BG",
-                "type": "png"
             }
         ]
     },
     "sdkVersion": "3",
     "shortName": "SHEEP3",
+    "targetPlatforms": [
+        "basalt"
+    ],
     "uuid": "3b1f3047-d53f-4218-ae30-dd5bb0694f0b",
     "versionLabel": "1.0",
     "watchapp": {

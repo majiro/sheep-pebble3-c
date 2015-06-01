@@ -168,7 +168,7 @@ static void send_out_sheep(int asheep){
   sheep_flock[asheep][IS_RUNNING] = TRUE;
   sheep_flock[asheep][X] = DEFAULT_WIDTH + 17;
 //  sheep_flock[asheep][Y] = DEFAULT_HEIGHT-5 - (rand()%(ground_height-5));
-  sheep_flock[asheep][Y] = DEFAULT_HEIGHT-5 - (rand()%(ground_height-5)) + 12;
+  sheep_flock[asheep][Y] = DEFAULT_HEIGHT-5 - (rand()%(ground_height-5)) + 15;
 
   sheep_flock[asheep][X_ON_JUMP] = calc_jump_x(sheep_flock[asheep][Y]);
 }
