@@ -9,8 +9,8 @@
     "resources": {
         "media": [
             {
-                "file": "images/c-bg.png",
-                "name": "IMAGE_BG",
+                "file": "images/c-sheep00.png",
+                "name": "IMAGE_SHEEP00",
                 "type": "png"
             },
             {
@@ -19,8 +19,8 @@
                 "type": "png"
             },
             {
-                "file": "images/c-sheep00.png",
-                "name": "IMAGE_SHEEP00",
+                "file": "images/c-bg.png",
+                "name": "IMAGE_BG",
                 "type": "png"
             }
         ]
