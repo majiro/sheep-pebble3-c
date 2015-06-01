@@ -103,17 +103,17 @@ static void canvas_update_proc(Layer *this_layer, GContext *ctx) {
   for (int asheep=0;asheep<MAX_SHEEP_NUMBER;asheep++){
     if(sheep_flock[asheep][IS_RUNNING]==TRUE){
       if(sheep_flock[asheep][PROGRESS_ON_JUMP]>0){
-        graphics_draw_bitmap_in_rect(ctx, sheep01_image_black,
+        graphics_draw_bitmap_in_rect(ctx, sheep01_image,
                                      GRect(sheep_flock[asheep][X],sheep_flock[asheep][Y],17,12));
 
       } else {
         if(sheep_flock[asheep][STRETCH_LEG]==TRUE){
-          graphics_draw_bitmap_in_rect(ctx, sheep01_image_black,
+          graphics_draw_bitmap_in_rect(ctx, sheep01_image,
                                        GRect(sheep_flock[asheep][X],
                                              sheep_flock[asheep][Y],17,12));
 
         } else {
-          graphics_draw_bitmap_in_rect(ctx, sheep00_image_black,
+          graphics_draw_bitmap_in_rect(ctx, sheep00_image,
                                        GRect(sheep_flock[asheep][X],
                                              sheep_flock[asheep][Y],17,12));
         }
@@ -137,11 +137,9 @@ static void window_load(Window *window) {
 
   bg_image = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_BG);
 
-  sheep00_image_white = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_SHEEP00_WHITE);
-  sheep00_image_black = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_SHEEP00_BLACK);
+  sheep00_image = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_SHEEP00);
 
-  sheep01_image_white = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_SHEEP01_WHITE);
-  sheep01_image_black = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_SHEEP01_BLACK);
+  sheep01_image = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_SHEEP01);
 
   // Use GCompOpOr to display the white portions of the fence image
   bg_image_layer = bitmap_layer_create(image_frame);
