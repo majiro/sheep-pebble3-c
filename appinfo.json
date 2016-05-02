@@ -4,34 +4,41 @@
         ""
     ],
     "companyName": "jirokanayama@gmail.com",
-    "longName": "SHEEP3",
+    "enableMultiJS": false,
+    "longName": "SHEEP-Color",
     "projectType": "native",
     "resources": {
         "media": [
             {
-                "file": "images/c-sheep00.png",
-                "name": "IMAGE_SHEEP00",
-                "type": "png"
-            },
-            {
-                "file": "images/c-sheep01.png",
-                "name": "IMAGE_SHEEP01",
-                "type": "png"
-            },
-            {
-                "file": "images/c-bg.png",
+                "file": "images/bw-bg.png",
                 "name": "IMAGE_BG",
-                "type": "png"
+                "targetPlatforms": [
+                    "aplite",
+                    "basalt",
+                    "chalk"
+                ],
+                "type": "bitmap"
+            },
+            {
+                "file": "images/bw-sheep01.png",
+                "name": "IMAGE_SHEEP01",
+                "type": "bitmap"
+            },
+            {
+                "file": "images/bw-sheep00.png",
+                "name": "IMAGE_SHEEP00",
+                "type": "bitmap"
             }
         ]
     },
     "sdkVersion": "3",
-    "shortName": "SHEEP3",
+    "shortName": "SHEEP-Color",
     "targetPlatforms": [
-        "basalt"
+        "basalt",
+        "chalk"
     ],
     "uuid": "3b1f3047-d53f-4218-ae30-dd5bb0694f0b",
-    "versionLabel": "1.0",
+    "versionLabel": "1.1",
     "watchapp": {
         "watchface": false
     }

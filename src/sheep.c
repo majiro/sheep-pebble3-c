@@ -23,6 +23,11 @@ static BitmapLayer *bg_image_layer;
 static GBitmap *sheep00_image;
 static GBitmap *sheep01_image;
 
+#define SHEEP00_WIDTH 17
+#define SHEEP00_HEIGHT 12
+#define SHEEP01_WIDTH 16
+#define SHEEP01_HEIGHT 12
+
 static Layer *canvas_layer;
 
 static TextLayer *text_layer;
@@ -37,14 +42,20 @@ static int some_sheep_is_running=FALSE;
 
 #define DEFAULT_WIDTH 144
 #define DEFAULT_HEIGHT 144
+static int screen_width = DEFAULT_WIDTH;
+static int screen_height = DEFAULT_HEIGHT;
 
-#define FENCE_WIDTH 52
-#define FENCE_HEIGHT 78
+#define FENCE_IMG_WIDTH 52
+#define FENCE_IMG_HEIGHT 78
+
+#define POLL_HEIGHT 12
+#define POLL_WIDTH 8
+
+static int fence_width = FENCE_IMG_WIDTH - POLL_WIDTH;
+static int fence_height = FENCE_IMG_HEIGHT - POLL_HEIGHT;
 
 #define X_MOVING_DIST 5
 #define Y_MOVING_DIST 3
-
-#define TOP_ON_JUMP 4
 
 #define GROUND_HEIGHT_RATIO 0.9
 static int ground_height = 70;
@@ -54,15 +65,24 @@ static int gate_is_widely_open = FALSE;
 #define MAX_SHEEP_NUMBER 100
 
 enum Sheep_Attr {
-  IS_RUNNING,
+  PHASE,
   X,
   Y,
-  PROGRESS_ON_JUMP,
+  COUNT_ON_JUMP,
   X_ON_JUMP,
+  X_AT_TOP_ON_JUMP,
   STRETCH_LEG
 };
 
-int sheep_flock[MAX_SHEEP_NUMBER][6];
+enum Sheep_Phase {
+  ENTER_RUN,
+  JUMP_UP,
+  JUMP_DOWN,
+  EXIT_RUN,
+  REST
+};
+
+int sheep_flock[MAX_SHEEP_NUMBER][STRETCH_LEG+1];
 
 /* simple base 10 only itoa */
 char *
@@ -101,33 +121,29 @@ static void canvas_update_proc(Layer *this_layer, GContext *ctx) {
 
   // Draw the sheep
   for (int asheep=0;asheep<MAX_SHEEP_NUMBER;asheep++){
-    if(sheep_flock[asheep][IS_RUNNING]==TRUE){
-      if(sheep_flock[asheep][PROGRESS_ON_JUMP]>0){
-        graphics_draw_bitmap_in_rect(ctx, sheep01_image,
-                                     GRect(sheep_flock[asheep][X],sheep_flock[asheep][Y],17,12));
-
-      } else {
+    if(sheep_flock[asheep][PHASE]!=REST){
+      if(sheep_flock[asheep][COUNT_ON_JUMP]>0){
+        // graphics_draw_bitmap_in_rect(ctx, sheep01_image,
+        //                             GRect(sheep_flock[asheep][X],sheep_flock[asheep][Y],17,12));
+        graphics_draw_bitmap_in_rect(ctx, sheep01_image, GRect(sheep_flock[asheep][X],sheep_flock[asheep][Y]-SHEEP01_HEIGHT,SHEEP01_WIDTH,SHEEP01_HEIGHT));
+     } else {
         if(sheep_flock[asheep][STRETCH_LEG]==TRUE){
-          graphics_draw_bitmap_in_rect(ctx, sheep01_image,
-                                       GRect(sheep_flock[asheep][X],
-                                             sheep_flock[asheep][Y],17,12));
-
+          graphics_draw_bitmap_in_rect(ctx, sheep01_image, GRect(sheep_flock[asheep][X], sheep_flock[asheep][Y]-SHEEP01_HEIGHT,SHEEP01_WIDTH,SHEEP01_HEIGHT));
         } else {
-          graphics_draw_bitmap_in_rect(ctx, sheep00_image,
-                                       GRect(sheep_flock[asheep][X],
-                                             sheep_flock[asheep][Y],17,12));
+          graphics_draw_bitmap_in_rect(ctx, sheep00_image, GRect(sheep_flock[asheep][X], sheep_flock[asheep][Y]-SHEEP00_HEIGHT,SHEEP00_WIDTH,SHEEP00_HEIGHT));
         }
-	sheep_flock[asheep][STRETCH_LEG]=(sheep_flock[asheep][STRETCH_LEG]+1)%2;
-
       }
     }
   }
-
-
 }
 
 static void window_load(Window *window) {
   Layer *window_layer = window_get_root_layer(window);
+
+  GRect window_bounds = layer_get_bounds(window_layer);
+
+  screen_width = window_bounds.size.w;
+  screen_height = window_bounds.size.h;
 
   // We do this to account for the offset due to the status bar
   // at the top of the app window.
@@ -156,29 +172,47 @@ static void window_load(Window *window) {
   // Set the update_proc
   layer_set_update_proc(canvas_layer, canvas_update_proc);
 
-  text_layer = text_layer_create(GRect(0,0, 144, 15));
+  if(window_bounds.size.w==180){ // for Chalk
+    text_layer = text_layer_create(GRect(55,15, 144, 15));
+  } else {
+   text_layer = text_layer_create(GRect(0,0, 144, 15));
+  }
   text_layer_set_background_color(text_layer, GColorFromRGB(150,150,255));
   layer_add_child(window_layer, text_layer_get_layer(text_layer));
 }
 
-static int calc_jump_x(int y){
-  return -1 * (y - DEFAULT_HEIGHT) * FENCE_WIDTH / FENCE_HEIGHT + (DEFAULT_WIDTH - FENCE_WIDTH) / 2;
-}
-
 static void send_out_sheep(int asheep){
-  sheep_flock[asheep][IS_RUNNING] = TRUE;
-  sheep_flock[asheep][X] = DEFAULT_WIDTH + 17;
-//  sheep_flock[asheep][Y] = DEFAULT_HEIGHT-5 - (rand()%(ground_height-5));
-  sheep_flock[asheep][Y] = DEFAULT_HEIGHT-5 - (rand()%(ground_height-5)) + 15;
+  sheep_flock[asheep][PHASE] = ENTER_RUN;
+  sheep_flock[asheep][STRETCH_LEG] = FALSE;
+  sheep_flock[asheep][X] = screen_width + 17;
 
-  sheep_flock[asheep][X_ON_JUMP] = calc_jump_x(sheep_flock[asheep][Y]);
+  sheep_flock[asheep][Y] = screen_height-5 - (rand()%(ground_height-10));
+
+  int rightside_x_of_first_poll = screen_width/2 - FENCE_IMG_WIDTH/2 + POLL_WIDTH;
+
+//  int dist_on_jump_from_poll = POLL_HEIGHT * X_MOVING_DIST / Y_MOVING_DIST - 4;
+  int dist_on_jump_from_poll = (POLL_HEIGHT * X_MOVING_DIST / Y_MOVING_DIST)/2;
+
+  int x_offset = (screen_height - sheep_flock[asheep][Y]) * fence_width / fence_height;
+
+//  sheep_flock[asheep][X_ON_JUMP] = rightside_x_of_first_poll + dist_on_jump_from_poll + x_offset;
+  sheep_flock[asheep][X_ON_JUMP] = rightside_x_of_first_poll + dist_on_jump_from_poll + x_offset;
+
+//  sheep_flock[asheep][X_AT_TOP_ON_JUMP] = sheep_flock[asheep][X_ON_JUMP] - fence_width / 2 + x_offset;
+  sheep_flock[asheep][X_AT_TOP_ON_JUMP] = rightside_x_of_first_poll - POLL_WIDTH / 2 + x_offset;
+/*
+  printf("calc_jump_x: X:%d, Y:%d", sheep_flock[asheep][X], sheep_flock[asheep][Y]);
+  printf("calc_jump_x: rightside_x_of_first_poll:%d, dist_on_jump_from_poll:%d", rightside_x_of_first_poll, dist_on_jump_from_poll);
+  printf("calc_jump_x: y_offset:%d, X_ON_JUMP:%d, X_AT_TOP_ON_JUMP:%d", x_offset, sheep_flock[asheep][X_ON_JUMP], sheep_flock[asheep][X_AT_TOP_ON_JUMP]);  
+*/
+  // printf("send_out: y=%d, jump_x=%d", sheep_flock[asheep][Y],sheep_flock[asheep][X_ON_JUMP]);
 }
 
 static void clear_sheep(int asheep){
-  sheep_flock[asheep][IS_RUNNING] = FALSE;
+  sheep_flock[asheep][PHASE] = REST;
   sheep_flock[asheep][X] = 0;
   sheep_flock[asheep][Y] = 0;
-  sheep_flock[asheep][PROGRESS_ON_JUMP] = 0;
+  sheep_flock[asheep][COUNT_ON_JUMP] = 0;
   sheep_flock[asheep][X_ON_JUMP] = 0;
   sheep_flock[asheep][STRETCH_LEG] = FALSE;
 }
@@ -188,7 +222,7 @@ static void update() {
   // Send out a sheep
   if (gate_is_widely_open==TRUE) {
     for (int i=0; i<MAX_SHEEP_NUMBER; i++){
-      if(sheep_flock[i][IS_RUNNING] == 0){
+      if(sheep_flock[i][PHASE] == REST){
         send_out_sheep(i);
         break;
       }
@@ -197,34 +231,55 @@ static void update() {
 
   // Update status for each sheep
   for(int asheep=0;asheep<MAX_SHEEP_NUMBER;asheep++){
-    if (sheep_flock[asheep][IS_RUNNING]==FALSE){
+    if (sheep_flock[asheep][PHASE]==REST){
         continue;
     }
 
     // Run
     sheep_flock[asheep][X] -= X_MOVING_DIST;
 
-    // start to jump when sheep reach to jump point
-    if (sheep_flock[asheep][PROGRESS_ON_JUMP]==0 && sheep_flock[asheep][X_ON_JUMP]<=sheep_flock[asheep][X] && sheep_flock[asheep][X] < sheep_flock[asheep][X_ON_JUMP] + X_MOVING_DIST){
-        sheep_flock[asheep][PROGRESS_ON_JUMP] += 1;
-    }
-
-    // behavior during jump
-    if (sheep_flock[asheep][PROGRESS_ON_JUMP] > 0 ){
-      if (sheep_flock[asheep][PROGRESS_ON_JUMP] <= TOP_ON_JUMP) {
+    switch (sheep_flock[asheep][PHASE]) {
+      case ENTER_RUN:
+        // printf("enter run, X_ON_JUMP:%d, x:%d, y:%d", sheep_flock[asheep][X_ON_JUMP], sheep_flock[asheep][X], sheep_flock[asheep][Y]);
+        if(sheep_flock[asheep][X_ON_JUMP]>=sheep_flock[asheep][X]){
+          // printf("sheep start to jump! X_ON_JUMP:%d, x:%d", sheep_flock[asheep][X_ON_JUMP], sheep_flock[asheep][X]);
+          sheep_flock[asheep][PHASE]=JUMP_UP;
+          sheep_flock[asheep][Y] -= Y_MOVING_DIST;
+          sheep_flock[asheep][COUNT_ON_JUMP] = 1;
+        }
+        break;
+      case JUMP_UP:
+        // printf("jump_up, x:%d, y:%d", sheep_flock[asheep][X], sheep_flock[asheep][Y]);
+        // count up and start to jump down
+        if (sheep_flock[asheep][X_AT_TOP_ON_JUMP]>(sheep_flock[asheep][X]+16/2)){
+          sheep_flock[asheep][PHASE]=JUMP_DOWN;
+          sheep_flock[asheep][Y] += Y_MOVING_DIST;
+          sheep_flock[asheep][COUNT_ON_JUMP] -=1;
+          if (sheep_count < 999999){
+            sheep_count += 1;
+          } else {
+            sheep_count = 0;
+          }
+          break;
+        }
         sheep_flock[asheep][Y] -= Y_MOVING_DIST;
-        sheep_flock[asheep][PROGRESS_ON_JUMP] += 1;
-      } else if (sheep_flock[asheep][PROGRESS_ON_JUMP] <= TOP_ON_JUMP * 2){
+        sheep_flock[asheep][COUNT_ON_JUMP] += 1;
+        break;
+      case JUMP_DOWN:
+        // printf("jump_down, x:%d, y:%d", sheep_flock[asheep][X], sheep_flock[asheep][Y]);
+        if(sheep_flock[asheep][COUNT_ON_JUMP]<=0){
+          sheep_flock[asheep][PHASE]=EXIT_RUN;
+          // printf("sheep end to jump! %d, %d", sheep_flock[asheep][X_ON_JUMP], sheep_flock[asheep][X]);
+          break;
+        }
         sheep_flock[asheep][Y] += Y_MOVING_DIST;
-        sheep_flock[asheep][PROGRESS_ON_JUMP] += 1;
-      } else {
-        sheep_flock[asheep][PROGRESS_ON_JUMP] = 0;
-      }
-    }
-
-    // count up
-    if (sheep_flock[asheep][PROGRESS_ON_JUMP] == TOP_ON_JUMP && sheep_count < 999999){
-      sheep_count += 1;
+        sheep_flock[asheep][COUNT_ON_JUMP] -= 1;
+        break;
+      case EXIT_RUN:
+        printf("exit run, X_ON_JUMP:%d, x:%d, y:%d", sheep_flock[asheep][X_ON_JUMP], sheep_flock[asheep][X], sheep_flock[asheep][Y]);
+        break;
+      default:
+        break;
     }
 
     // go away and send out a sheep if there is no sheep on run
@@ -232,7 +287,7 @@ static void update() {
       some_sheep_is_running = FALSE;
       clear_sheep(asheep);
       for (int asheep=0;asheep<MAX_SHEEP_NUMBER;asheep++) {
-        if (sheep_flock[asheep][IS_RUNNING]==TRUE) {
+        if (sheep_flock[asheep][PHASE]!=REST) {
           some_sheep_is_running = TRUE;
           break;
         }
@@ -273,7 +328,7 @@ void down_single_click_handler(ClickRecognizerRef recognizer, void *context) {
 }
 void select_single_click_handler(ClickRecognizerRef recognizer, void *context) {
   for (int asheep=0;asheep<MAX_SHEEP_NUMBER;asheep++) {
-    if (sheep_flock[asheep][IS_RUNNING]==FALSE) {
+    if (sheep_flock[asheep][PHASE]==REST) {
       send_out_sheep(asheep);
       break;
     }
@@ -320,3 +375,4 @@ int main(void) {
   app_event_loop();
   deinit();
 }
+
